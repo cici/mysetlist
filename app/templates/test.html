@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/themes/bootstrap-table/bootstrap-table.min.css"
+    />
+
+    <title>Brandi Carlile Setlists</title>
+  </head>
+  <body>
+    <table
+      id="table"
+      data-toggle="table"
+      data-height="460"
+      data-detail-view="true"
+      data-detail-formatter="detailFormatter"
+      data-show-refresh="true"
+      data-url="json/data1.json"
+    >
+      <thead>
+        <tr>
+          <th data-field="id">ID</th>
+          <th data-field="name">Item Name</th>
+          <th data-field="price">Item Price</th>
+        </tr>
+      </thead>
+    </table>
+
+    <script>
+      function detailFormatter(index, row) {
+        var html = [];
+        $.each(row, function (key, value) {
+          html.push("<p><b>" + key + ":</b> " + value + "</p>");
+        });
+        return html.join("");
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/bootstrap-table.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/themes/bootstrap-table/bootstrap-table.min.js"></script>
+  </body>
+</html>
