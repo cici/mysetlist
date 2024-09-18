@@ -12,7 +12,9 @@ def hello():
     #conn = psycopg2.connect(database="setlist", user="postgres",
     #                        password="root", host="localhost", port="5432")
 
-    conn = psycopg2.connect(database='setlist_ldrk', user='bcb', password='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw', host='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a', port='5432')
+    DATABASE_URL = 'postgresql://bcb:uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a.oregon-postgres.render.com/setlist_ldrk'
+
+    conn = psycopg2.connect(DATABASE_URL)
 
     # create a cursor
     cur = conn.cursor()
@@ -37,7 +39,9 @@ def get_shows():
     #conn = psycopg2.connect(database="setlist", user="postgres",
     #                        password="root", host="localhost", port="5432")
 
-    conn = psycopg2.connect(database='setlist_ldrk', user='bcb', password='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw', host='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a', port='5432')
+    DATABASE_URL = 'postgresql://bcb:uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a.oregon-postgres.render.com/setlist_ldrk'
+
+    conn = psycopg2.connect(DATABASE_URL)
 
     # create a cursor
     cur = conn.cursor()
