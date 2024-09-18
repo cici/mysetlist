@@ -9,8 +9,10 @@ app.config['SECRET_KEY'] = 'thisisa600secretkey#92'
 @app.route('/')
 def hello():
     # Connect to the database
-    conn = psycopg2.connect(database="setlist", user="postgres",
-                            password="root", host="localhost", port="5432")
+    #conn = psycopg2.connect(database="setlist", user="postgres",
+    #                        password="root", host="localhost", port="5432")
+
+    conn = psycopg2.connect(database='setlist_ldrk', user='bcb', password='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw', host='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a', port='5432')
 
     # create a cursor
     cur = conn.cursor()
@@ -32,8 +34,10 @@ def hello():
 @app.route('/shows', methods=['GET'])
 def get_shows():
     # Connect to the database
-    conn = psycopg2.connect(database="setlist", user="postgres",
-                            password="root", host="localhost", port="5432")
+    #conn = psycopg2.connect(database="setlist", user="postgres",
+    #                        password="root", host="localhost", port="5432")
+
+    conn = psycopg2.connect(database='setlist_ldrk', user='bcb', password='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw', host='uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a', port='5432')
 
     # create a cursor
     cur = conn.cursor()
