@@ -3,6 +3,7 @@ import psycopg2
 
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'thisisa600secretkey#92'
 
 
 @app.route('/')
