@@ -1,5 +1,7 @@
 from flask import Flask, render_template, jsonify, make_response, request
 import psycopg2
+from psycopg2.extras import RealDictCursor
+import json
 
 
 app = Flask(__name__)
@@ -44,7 +46,7 @@ def get_shows():
     conn = psycopg2.connect(DATABASE_URL)
 
     # create a cursor
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 20, type=int)
@@ -54,6 +56,10 @@ def get_shows():
     print(limit)
     print(offset)
 
+#    main_query = '''select row_to_json(row)
+#from (select show.event_date, v.venue_name, c.city_name, c.state from #artist_show show left join venue v
+#    on show.venue_id = v.id left join city c on v.city_id = c.id LIMIT {0} #OFFSET {1}) row;'''.format(limit, offset)
+
     main_query = '''select show.event_date, v.venue_name, c.city_name, c.state from artist_show show left join venue v
     on show.venue_id = v.id left join city c on v.city_id = c.id LIMIT {0} OFFSET {1}'''.format(limit, offset)
 
@@ -61,13 +67,14 @@ def get_shows():
 
     # Fetch the data
     data = cur.fetchall()
-    #print(data)
+    print(data)
     conn.commit()
 
     # close the cursor and connection
     cur.close()
     conn.close()
 
-    return make_response(jsonify(data), 200)
-
+    return data
+    #return jsonify(data, status=200, mimetype='application/json')
+    #return make_response(jsonify(data), 200)
 
