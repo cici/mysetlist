@@ -37,61 +37,35 @@ def hello():
 @app.route('/shows', methods=['GET'])
 def get_shows():
 
+    final_results = {}
+
     # create a cursor
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     page = request.args.get('page', 1, type=int)
-    limit = request.args.get('limit', 20, type=int)
+    limit = request.args.get('limit', 10, type=int)
     offset = (limit * page) - limit;
 
-    print(page)
-    print(limit)
-    print(offset)
-
     total_shows = getTotalShows()
-
-    #main_query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
-    #on show.venue_id = v.id left join city c on v.city_id = c.id LIMIT {0} OFFSET {1}'''.format(limit, offset)
+    final_results['total_shows'] = total_shows
 
     main_query = createMainQuery(None, None, limit, offset)
     cur.execute(main_query)
 
     # Fetch the data
     results = cur.fetchall()
-    final_results = {}
-    show_list = []
-    final_results['total_shows'] = total_shows
-    index = 0
-    for row in results:
-        # Append main show information
-        show_list.append(dict(row))
-        # Get the songs
-        artist_show_id = row['artist_show_id']
-        with conn.cursor(cursor_factory=RealDictCursor) as song_cursor:
-            song_query = '''select ss.song_name, ss.encore, a.artist_name from song_show ss
-            left join song s on ss.song_name=s.song_name
-            left join artist a on s.cover_artist_id=a.mbid
-            where song_show_id='{0}' '''.format(artist_show_id)
-            song_cursor.execute(song_query)
-            song_list = song_cursor.fetchall()
-            show_list[index]['song_list'] = song_list
-        index = index + 1
-    conn.commit()
 
-    # close the cursor and connection
-    cur.close()
-    conn.close()
+    show_list = populateShowList(results)
+
     final_results['show_list'] = show_list
     #print(final_results)
     return final_results
-    #return jsonify(data, status=200, mimetype='application/json')
-    #return make_response(jsonify(data), 200)
 
 @app.route('/search', methods=['GET'])
 def search_shows():
 
     page = request.args.get('page', 1, type=int)
-    limit = request.args.get('limit', 20, type=int)
+    limit = request.args.get('limit', 10, type=int)
     term = request.args.get('term')
     action = request.args.get('action')
     offset = (limit * page) - limit;
@@ -135,22 +109,46 @@ def searchByTerm(term, action, limit, offset):
     return final_results
 
 def searchBySong(term, action, limit, offset):
-    song_query = createSongQuery(term, action, None)
+    song_query = createSongQuery(term, action, None, limit, offset)
 
     # create a cursor
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(song_query)
+    num = cur.rowcount
+    print('NUMBER')
+    print(num)
     # Fetch the data
     results = cur.fetchall()
     final_results = {}
     show_list = []
-    # Scroll through list of songs and add shows
-    index = 0
-    print("Search by Song")
-    for row in results:
-       print(row['artist_show_id'])
-       show_query = createShowQuery(row['artist_show_id'])
+
+    # Scroll through list of songs and add shows (and their songs)
+    show_list = populateShowList(results)
+    final_results['show_list'] = show_list
     return final_results
+
+
+def populateShowList(results):
+    show_list = []
+
+    index = 0
+    for row in results:
+        # Append main show information
+        show_list.append(dict(row))
+        # Get the songs
+        artist_show_id = row['artist_show_id']
+        with conn.cursor(cursor_factory=RealDictCursor) as song_cursor:
+            song_query = '''select ss.song_name, ss.encore, a.artist_name from song_show ss
+            left join song s on ss.song_name=s.song_name
+            left join artist a on s.cover_artist_id=a.mbid
+            where song_show_id='{0}' '''.format(artist_show_id)
+            song_cursor.execute(song_query)
+            song_list = song_cursor.fetchall()
+            show_list[index]['song_list'] = song_list
+        index = index + 1
+    return show_list
+    #return jsonify(data, status=200, mimetype='application/json')
+    #return make_response(jsonify(data), 200)
 
 def createMainQuery(term, action, limit, offset):
     if action == 'venue':
@@ -166,13 +164,16 @@ def createMainQuery(term, action, limit, offset):
         on show.venue_id = v.id left join city c on v.city_id = c.id LIMIT {0} OFFSET {1}'''.format(limit, offset)
     return query
 
-def createSongQuery(term, action, artist_show_id):
+def createSongQuery(term, action, artist_show_id, limit, offset):
     if action == 'song':
-        query = '''select show.artist_show_id, ss.song_show_id, ss.song_name, ss.encore, a.artist_name from song_show ss
+        query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name
+        from artist_show show
+        left join venue v on show.venue_id = v.id
+        left join city c on v.city_id = c.id
+        left join song_show ss on show.artist_show_id = ss.song_show_id
         left join song s on ss.song_name=s.song_name
         left join artist a on s.cover_artist_id=a.mbid
-        left join artist_show show on show.artist_show_id=ss.song_show_id
-        where ss.song_name like '%{0}%' '''.format(term)
+        where ss.song_name like '%{0}%' LIMIT {1} OFFSET {2}'''.format(term, limit, offset)
     else:
         query = '''select ss.song_name, ss.encore, a.artist_name from song_show ss
         left join song s on ss.song_name=s.song_name
@@ -183,6 +184,18 @@ def createSongQuery(term, action, artist_show_id):
 def createShowQuery(artist_show_id):
     query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
     on show.venue_id = v.id left join city c on v.city_id = c.id where show.artist_show_id = '{0}' '''.format(artist_show_id)
+
+    return query
+
+def createSearchBySongQuery(term):
+    query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name
+    from artist_show show
+    left join venue v on show.venue_id = v.id
+    left join city c on v.city_id = c.id
+    left join song_show ss on show.artist_show_id = ss.song_show_id
+    left join song s on ss.song_name=s.song_name
+    left join artist a on s.cover_artist_id=a.mbid
+    where ss.song_name like '%{0}%' '''.format(term)
 
     return query
 
