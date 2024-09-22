@@ -94,11 +94,6 @@ def get_shows():
             #final_results['song_list'] = song_list
             #print(song_list)
             #show_songs = song_cursor.fetchall()
-            # Convert to dictionary
-            #song_dict = jsonify(show_songs)
-            #print(song_dict)
-            #row_dict['songs'] = jsonify(show_songs)
-            #print(song_dict)
         #song_data = get_associated_songs(artist_show_id)
         # Add song data to resultset
         #row_dict['song_data'] = song_data
@@ -109,7 +104,6 @@ def get_shows():
     # close the cursor and connection
     cur.close()
     conn.close()
-    print(show_list)
     final_results['show_list'] = show_list
     #print(final_results)
     return final_results
