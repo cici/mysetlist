@@ -25,11 +25,7 @@ def hello():
      # Fetch the data
     data = cur.fetchall()
     #print(data)
-    conn.commit()
 
-    # close the cursor and connection
-    cur.close()
-    conn.close()
 
     return render_template('test.html')
 
@@ -114,9 +110,7 @@ def searchBySong(term, action, limit, offset):
     # create a cursor
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(song_query)
-    num = cur.rowcount
-    print('NUMBER')
-    print(num)
+
     # Fetch the data
     results = cur.fetchall()
     final_results = {}
@@ -166,7 +160,7 @@ def createMainQuery(term, action, limit, offset):
 
 def createSongQuery(term, action, artist_show_id, limit, offset):
     if action == 'song':
-        query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name
+        query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name, count(*) OVER() AS full_count
         from artist_show show
         left join venue v on show.venue_id = v.id
         left join city c on v.city_id = c.id
