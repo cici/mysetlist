@@ -42,8 +42,8 @@ def get_shows():
     limit = request.args.get('limit', 10, type=int)
     offset = (limit * page) - limit;
 
-    total_shows = getTotalShows()
-    final_results['total_shows'] = total_shows
+    #total_shows = getTotalShows()
+    #final_results['total_shows'] = total_shows
 
     main_query = createMainQuery(None, None, limit, offset)
     cur.execute(main_query)
@@ -81,6 +81,8 @@ def searchByTerm(term, action, limit, offset):
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(main_query)
 
+    print(main_query)
+
     # Fetch the data
     results = cur.fetchall()
     final_results = {}
@@ -94,7 +96,7 @@ def searchByTerm(term, action, limit, offset):
         # Get the songs
         artist_show_id = row['artist_show_id']
         with conn.cursor(cursor_factory=RealDictCursor) as song_cursor:
-            song_query = createSongQuery(term, action, artist_show_id)
+            song_query = createSongQuery(term, action, artist_show_id, limit, offset)
             song_cursor.execute(song_query)
             song_list = song_cursor.fetchall()
             show_list[index]['song_list'] = song_list
@@ -132,7 +134,7 @@ def populateShowList(results):
         # Get the songs
         artist_show_id = row['artist_show_id']
         with conn.cursor(cursor_factory=RealDictCursor) as song_cursor:
-            song_query = '''select ss.song_name, ss.encore, a.artist_name from song_show ss
+            song_query = '''select ss.song_name, ss.encore, a.artist_name, count(*) OVER() AS full_count from song_show ss
             left join song s on ss.song_name=s.song_name
             left join artist a on s.cover_artist_id=a.mbid
             where song_show_id='{0}' '''.format(artist_show_id)
@@ -146,15 +148,15 @@ def populateShowList(results):
 
 def createMainQuery(term, action, limit, offset):
     if action == 'venue':
-        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
+        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state, count(*) OVER() AS full_count from artist_show show left join venue v
         on show.venue_id = v.id left join city c on v.city_id = c.id
-        where v.venue_name like '%{0}%' LIMIT {1} OFFSET {2}'''.format(term,limit, offset)
+        where LOWER(v.venue_name) like LOWER('%{0}%') LIMIT {1} OFFSET {2}'''.format(term,limit, offset)
     elif action == 'city':
-        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
+        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state, count(*) OVER() AS full_count from artist_show show left join venue v
         on show.venue_id = v.id left join city c on v.city_id = c.id
-        where c.city_name like '%{0}%' LIMIT {1} OFFSET {2}'''.format(term,limit, offset)
+        where LOWER(c.city_name) like LOWER('%{0}%') LIMIT {1} OFFSET {2}'''.format(term,limit, offset)
     else:
-        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
+        query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state, count(*) OVER() AS full_count from artist_show show left join venue v
         on show.venue_id = v.id left join city c on v.city_id = c.id LIMIT {0} OFFSET {1}'''.format(limit, offset)
     return query
 
@@ -167,29 +169,29 @@ def createSongQuery(term, action, artist_show_id, limit, offset):
         left join song_show ss on show.artist_show_id = ss.song_show_id
         left join song s on ss.song_name=s.song_name
         left join artist a on s.cover_artist_id=a.mbid
-        where ss.song_name like '%{0}%' LIMIT {1} OFFSET {2}'''.format(term, limit, offset)
+        where LOWER(ss.song_name) like LOWER('%{0}%') LIMIT {1} OFFSET {2}'''.format(term, limit, offset)
     else:
-        query = '''select ss.song_name, ss.encore, a.artist_name from song_show ss
+        query = '''select ss.song_name, ss.encore, a.artist_name, count(*) OVER() AS full_count from song_show ss
         left join song s on ss.song_name=s.song_name
         left join artist a on s.cover_artist_id=a.mbid
         where song_show_id='{0}' '''.format(artist_show_id)
     return query
 
 def createShowQuery(artist_show_id):
-    query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state from artist_show show left join venue v
+    query = '''select show.artist_show_id, show.event_date, v.venue_name,  c.city_name, c.state, count(*) OVER() AS full_count from artist_show show left join venue v
     on show.venue_id = v.id left join city c on v.city_id = c.id where show.artist_show_id = '{0}' '''.format(artist_show_id)
 
     return query
 
 def createSearchBySongQuery(term):
-    query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name
+    query = '''select show.artist_show_id, show.event_date, v.venue_name, c.city_name, c.state, ss.song_name, ss.encore, a.artist_name, count(*) OVER() AS full_count
     from artist_show show
     left join venue v on show.venue_id = v.id
     left join city c on v.city_id = c.id
     left join song_show ss on show.artist_show_id = ss.song_show_id
     left join song s on ss.song_name=s.song_name
     left join artist a on s.cover_artist_id=a.mbid
-    where ss.song_name like '%{0}%' '''.format(term)
+    where LOWER(ss.song_name) like LOWER('%{0}%') '''.format(term)
 
     return query
 
