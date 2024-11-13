@@ -7,7 +7,9 @@ import json
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'thisisa600secretkey#92'
 
-DATABASE_URL = 'postgresql://bcb:uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a.oregon-postgres.render.com/setlist_ldrk'
+# DATABASE_URL = 'postgresql://bcb:uvB4rcXdWk5iWFUQn7ZFwihfJMeGuTlw@dpg-crl2tnqj1k6c73fl0ueg-a.oregon-postgres.render.com/setlist_ldrk'
+
+DATABASE_URL = 'postgresql://postgres.psbyspxiwxxryshboqwj:Ihr0LYFSJcQ5jfYU@aws-0-us-east-1.pooler.supabase.com:6543/postgres'
 
 conn = psycopg2.connect(DATABASE_URL)
 
