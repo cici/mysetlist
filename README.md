@@ -74,6 +74,11 @@
     <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
+TO RUN APPLICATION:
+gunicorn app.hello:app
+
+TO RUN TESTS:
+python3 -m pytest tests/ -v
 
 <!-- ABOUT THE PROJECT -->
 

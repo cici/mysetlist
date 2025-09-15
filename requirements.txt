@@ -11,3 +11,5 @@ psycopg2-binary==2.9.10
 typing_extensions==4.12.2
 Werkzeug==3.0.4
 pip==24.3.1
+python-dotenv
+supabase==2.3.4
