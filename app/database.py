@@ -42,6 +42,11 @@ class ValidationError(DatabaseError):
     def __init__(self, message: str = "Data validation error"):
         super().__init__(message, status_code=400)
 
+class RateLimitError(DatabaseError):
+    """Exception for rate limiting errors (429 Too Many Requests)"""
+    def __init__(self, message: str = "Rate limit exceeded. Please try again later"):
+        super().__init__(message, status_code=429)
+
 class DatabaseManager:
     _instance = None
     _supabase_client: Optional[Client] = None
@@ -154,6 +159,27 @@ class DatabaseManager:
             logger.error(f"Response formatting failed: {str(e)}")
             raise DatabaseError(f"Failed to format response: {str(e)}")
 
+    def _handle_supabase_error(self, error: Exception) -> None:
+        """Handle Supabase-specific errors and convert them to appropriate exceptions"""
+        error_str = str(error).lower()
+        
+        # Check for rate limiting errors (429)
+        if ('429' in error_str or 
+            'too many requests' in error_str or 
+            'rate limit' in error_str or
+            'quota exceeded' in error_str):
+            logger.warning(f"Rate limit exceeded: {str(error)}")
+            raise RateLimitError("API rate limit exceeded. Please wait a moment before trying again.")
+        
+        # Check for other common Supabase errors
+        if 'connection' in error_str or 'timeout' in error_str:
+            logger.error(f"Connection error: {str(error)}")
+            raise ConnectionError(f"Database connection error: {str(error)}")
+        
+        # For other errors, let them bubble up as QueryError
+        logger.error(f"Database query error: {str(error)}")
+        raise QueryError(f"Database operation failed: {str(error)}")
+
     def get_supabase_client(self) -> Client:
         """Get the Supabase client instance"""
         if not self._supabase_client:
@@ -189,8 +215,8 @@ class DatabaseManager:
             for attempt in range(self._max_retries):
                 try:
                     return func(self, *args, **kwargs)
-                except (ConnectionError, ValidationError) as e:
-                    # Don't retry validation errors or connection errors
+                except (ConnectionError, ValidationError, RateLimitError) as e:
+                    # Don't retry validation errors, connection errors, or rate limit errors
                     raise e
                 except Exception as e:
                     last_exception = e
@@ -236,8 +262,17 @@ class DatabaseManager:
                         .execute()
                     show['songs'] = songs_response.data
                 except Exception as e:
-                    logger.warning(f"Could not fetch songs for show {show['artist_show_id']}: {str(e)}")
-                    show['songs'] = []
+                    # Handle potential rate limiting on individual song queries
+                    if ('429' in str(e).lower() or 
+                        'too many requests' in str(e).lower() or 
+                        'rate limit' in str(e).lower()):
+                        logger.warning(f"Rate limit exceeded while fetching songs for show {show['artist_show_id']}")
+                        # For individual song failures due to rate limiting, we'll continue with empty songs
+                        # rather than failing the entire request
+                        show['songs'] = []
+                    else:
+                        logger.warning(f"Could not fetch songs for show {show['artist_show_id']}: {str(e)}")
+                        show['songs'] = []
                 shows_data.append(show)
             
             response.data = shows_data
@@ -248,12 +283,12 @@ class DatabaseManager:
                 page,
                 limit
             )
-        except (ValidationError, ConnectionError):
-            # Re-raise validation and connection errors directly
+        except (ValidationError, ConnectionError, RateLimitError):
+            # Re-raise validation, connection, and rate limit errors directly
             raise
         except Exception as e:
-            logger.error(f"Failed to get shows: {str(e)}")
-            raise QueryError(f"Failed to fetch shows: {str(e)}")
+            # Handle Supabase-specific errors
+            self._handle_supabase_error(e)
 
     @retry_on_failure
     def get_show_by_id(self, show_id: str) -> Dict[str, Any]:

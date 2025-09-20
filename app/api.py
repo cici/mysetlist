@@ -1,8 +1,13 @@
 from flask import Flask, render_template, jsonify, make_response, request
 import json
 import os
+import logging
 from dotenv import load_dotenv
-from .database import db, DatabaseError, ConnectionError, QueryError, ValidationError
+from .database import db, DatabaseError, ConnectionError, QueryError, ValidationError, RateLimitError
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,6 +29,19 @@ def handle_database_error(error):
     }
     return jsonify(response), error.status_code
 
+@app.errorhandler(RateLimitError)
+def handle_rate_limit_error(error):
+    """Handle rate limiting errors with user-friendly response"""
+    response = {
+        'error': {
+            'message': error.message,
+            'type': 'RateLimitError',
+            'retry_after': 60,  # Suggest retry after 60 seconds
+            'code': 'RATE_LIMIT_EXCEEDED'
+        }
+    }
+    return jsonify(response), 429
+
 @app.errorhandler(Exception)
 def handle_generic_error(error):
     response = {
@@ -43,9 +61,33 @@ def index():
 
 @app.route('/shows', methods=['GET'])
 def get_shows():
-    page = request.args.get('page', 1, type=int)
-    limit = request.args.get('limit', 10, type=int)
-    return jsonify(db.get_shows(page=page, limit=limit))
+    """Get shows with pagination and graceful error handling for rate limiting"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 10, type=int)
+        
+        logger.info(f"Fetching shows - page: {page}, limit: {limit}")
+        
+        # The database layer will handle rate limiting and other errors
+        result = db.get_shows(page=page, limit=limit)
+        
+        logger.info(f"Successfully fetched {len(result.get('data', []))} shows")
+        return jsonify(result)
+        
+    except RateLimitError as e:
+        # Rate limit errors are handled by the error handler, but we log them here for monitoring
+        logger.warning(f"Rate limit exceeded for /shows endpoint: {str(e)}")
+        raise  # Re-raise to let the error handler deal with it
+        
+    except (ValidationError, ConnectionError, QueryError) as e:
+        # Other database errors are also handled by error handlers
+        logger.error(f"Database error in /shows endpoint: {str(e)}")
+        raise  # Re-raise to let the error handler deal with it
+        
+    except Exception as e:
+        # Catch any unexpected errors
+        logger.error(f"Unexpected error in /shows endpoint: {str(e)}")
+        raise  # Re-raise to let the generic error handler deal with it
 
 @app.route('/shows/<show_id>', methods=['GET'])
 def get_show(show_id):
