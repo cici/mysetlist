@@ -63,6 +63,7 @@ def index():
 def get_shows():
     """Get shows with pagination and graceful error handling for rate limiting"""
     try:
+        logger.info("Inside shows endpoint")
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 10, type=int)
         
